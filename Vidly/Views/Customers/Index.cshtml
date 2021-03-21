@@ -1,0 +1,77 @@
+﻿@model IEnumerable<Vidly.Models.Customer>
+@{
+    ViewBag.Title = "Customers";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Customers</h2>
+<p>
+    @Html.ActionLink("New Customer", "New", "Customers", null, new { @class = "btn btn-primary" })
+</p>
+
+<table id="customers" class="table table-bordered table-hover"> @* id="customers" - to have a reference to this table in jquery code by id*@
+    <thead>
+        <tr>
+            <th>Customer</th>
+            <th>Membership Type</th>
+            <th>Delete</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+
+@section scripts
+{
+    <script>
+        $(document).ready(function () {
+            var table = $("#customers").DataTable({                  @* select customers table and call DataTable function on it using configuration object*@
+                ajax: {                                              @* to use api as a source to data for this DataTable*@
+                    url: "/api/customers",
+                    dataSrc: ""                                      @* array of customers objects is the actual source of data in responce, so no source name ("") needed*@
+                },
+                columns: [                                           @* columns property, which is an array (3 columns), for each column we supply an object*@
+                    {
+                        data: "name",                       @* data property specifies where to get data for each row of this column, DataTable uses the name property of a customer object from a respone*@
+                        render: function (data, type, customer) {    @* DataTable uses data as a plain text to render each row. But since rows of this column should be rendered as links we need to supply a custom rendering function*@
+                                                                     @* 3rd parameter is an actual object or row we are rendering, so we call it "customer"*@
+                            return "<a href ='/customers/edit/" + customer.id + "'>" + customer.name + "</a>";  @* same as:  <td>@Html.ActionLink(customer.Name, "Edit", "Customers", new { id = customer.Id }, null)</td>*@
+                        }
+                    },
+                    {
+                        data: "membershipType.name"
+                    },
+                    {
+                        data: "id",
+                        render: function (data) {
+                            return "<button class='btn-link js-delete' data-customer-id=" + data + ">Delete</button>";  @*same as:  <button data-customer-id="@customer.Id" class="btn-link js-delete">Delete</button>*@
+                        }
+                    }
+                ]
+            });
+                                                                                                @* btn-link is a bootstrap class for a button to make it look like a link*@
+                                                                                                @* data-customer-id - data attribute to store customer's id*@
+                                                                                                @* js-delete - add a class to have a reference to delete button*@
+
+            $("#customers").on("click", ".js-delete", function () {                                     @* "#customers" - reference to table, ".js-delete - reference to delete button by class" *@
+                var button = $(this);                                                                   @* button variable which has a reference to selected button*@
+                bootbox.confirm("Are you sure you want to delete this customer?", function (result) {   @* bootbox confirm function returns a result which is used in a callback function*@
+                    if (result) {
+                        $.ajax({                                                                        @* call api using jquery ajax*@
+                            url: "/api/customers/" + button.attr("data-customer-id"),                   @* button.attr("") - get the value of button's attribute by the name of an attribute*@
+                            method: "DELETE",
+                            success: function () {                                                  @* a callback function when the call is successfull*@
+                                table.row(button.parents("tr")).remove().draw();                    @* select a row of the DataTable which contains the button that has been clicked and delete that row*@
+                                                                                                    @* draw() method makes the customer to disappear from the view*@
+                                                                                                    @* button.parents("tr").remove();  -  this function will remove deleted customer from HTML markup
+                                                                                                    by removing a table row. With this approach the record will still remain in internal list of DataTable. *@
+                            }
+                        });
+                    }
+                });
+            });
+
+        });
+    </script>
+
+}
